@@ -41,7 +41,7 @@
 			var xFrames; /* Servira de repère pour le compte des frames */
 			
 			
-			function Perso(fichier, spriteX, spriteY, herosWidth, herosHeight, posX, posY) {
+			function Player(fichier, spriteX, spriteY, herosWidth, herosHeight, posX, posY) {
 				// voir pour l'usage des this et _this en javascript !
 				// var _this = this ;
 				this.image = new Image(); /* fichier du sprite */
@@ -348,8 +348,8 @@
 							
 			var response = new SAT.Response();
 	
-			var player1 = new Perso(spritePlayer1, 0 /* le heros est statique */, 2/* le heros regarde vers le bas */, 50, 50, 1015, 190);
-			var player2 = new Perso(spritePlayer2, 0 /* le heros est statique */, 2/* le heros regarde vers le bas */, 50, 50, 985, 190);
+			var player1 = new Player(spritePlayer1, 0 /* le heros est statique */, 2/* le heros regarde vers le bas */, 50, 50, 1015, 190);
+			var player2 = new Player(spritePlayer2, 0 /* le heros est statique */, 2/* le heros regarde vers le bas */, 50, 50, 985, 190);
 			
 	
 	
@@ -682,7 +682,7 @@
     <body>
 		<div id="fond"></div>
 		<!-- <p>Utilise Z-Q-X-D pour te déplacer et I pour distribuer les invitations à tes amis / Press Z-Q-X-D to move and I to invite your friends. </p> -->
-		<p>Utilise les flèches pour te déplacer et la barre espace pour distribuer les invitations à tes amis / Press arrows to move (or ZQDX) and the spacebar (or I) to invite your friends. <a href="#" id="showIntro">revoir la règle</a> - <a href="#" id="showAbout">à propos</a></p>
+		<p>Utilise les flèches (ou ZQDX) pour te déplacer et la barre espace (ou la touche I) pour distribuer les invitations à tes amis.</br><a href="#" id="showIntro">revoir la règle</a> - <a href="#" id="showAbout">à propos</a> - <a href="https://github.com/taccary/XmasGame/issues" id="tracking" target="_blank">bugs et améliorations</a></p>
 		<div id="friends" style="display:none">Marie
 		Gilles
 		Fréderique
