@@ -1,0 +1,745 @@
+<html>
+<head>
+	<title>X-Mas lil'Game - TAB</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="style.css">
+	<script src="js/jquery-1.4.2.js" type="text/javascript"></script>
+	<script src="js/SAT.js" type="text/javascript"></script>
+	<script src="js/modal.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		$(document).ready(function(){
+			var canvas = $('#myCanvas');
+			var context = canvas.get(0).getContext("2d");
+
+			//canvas.attr("width", $(window).get(0).innerWidth); /* Je veux que mon canvas fasse la largeur de ma fenêtre */
+			
+			/* Liste des variables utiles */
+			var background = new Image(); 
+			background.src = "images/fonds/fond.png"; /* Image de fond */
+			var nbFriend = 10; /* nombre d'amis à inviter */
+			var canvasWidth = canvas.width(); /* Largeur du canvas */
+			var canvasHeight = canvas.height(); /* Hauteur du canvas */
+			var spritePlayer1 = 'images/perso1_petit.png'; /* sprite du perso du joueur 1 */
+			var spritePlayer2 = 'images/perso2_petit.png'; /* sprite du perso du joueur 1 */
+			var end = false;
+			var footStep = 2;
+			var velocity = 2; /* sert a ralentir le changement de frame par mouvement */
+			var animBack = false; /* Servira à la position du sprite */
+			var counter = 0; /* Un compteur de frames */
+			var counterAnim = 0; /* Un autre compteur */
+			var player1Left = 37; /* KeyCode fleche gauche pour aller à gauche */
+			var player1Right = 39; /* KeyCode fleche droitepour aller à droite */
+			var player1Up = 38; /* KeyCode fleche haut pour monter */
+			var player1Down = 40; /* KeyCode fleche bas pour descendre */
+			var player1InviteKey = 32; /* spacebar */
+			var player2Left = 81; /* KeyCode de Q pour aller à gauche */
+			var player2Right = 68; /* KeyCode de D pour aller à droite */
+			var player2Up = 90; /* KeyCode de Z pour monter */
+			var player2Down = 88; /* KeyCode de X pour descendre */
+			var player2InviteKey = 73; /* KeyCode de I pour inviter */
+			var endKey = 13; /* KeyCode de entrée pour terminer */
+			var xFrames; /* Servira de repère pour le compte des frames */
+			
+			
+			function Perso(fichier, spriteX, spriteY, herosWidth, herosHeight, posX, posY) {
+				// voir pour l'usage des this et _this en javascript !
+				// var _this = this ;
+				this.image = new Image(); /* fichier du sprite */
+				this.image.src = fichier; 
+				this.spriteX = spriteX*herosWidth; /* Servira à la position du sprite */
+				this.spriteY = spriteY*herosHeight;
+				this.herosWidth = herosWidth; /* Largeur du perso dans le sprite */
+				this.herosHeight = herosHeight; /* Hauteur du perso dans le sprite */
+				this.posX = posX;
+				this.posY = posY;
+				this.newPosX = posX; /* Position horizontale de la projection de position du perso */
+				this.newPosY = posY; /* Position verticale de la projection de position du perso */
+				this.posRight = false; 
+				this.posLeft = false;
+				this.posUp = false;
+				this.posDown = true; /* Par défaut le personnage regarde en bas */
+				this.running = false; /* Par défaut il ne court pas */
+				this.runRight = false;
+				this.runLeft = false;
+				this.runUp = false;
+				this.runDown = false;
+				this.invite = false;
+				this.box = new SAT.Box(new SAT.Vector(this.PosX+20,this.PosY+20), 10, 10); //un carré de 10*10 au centre du perso
+				this.display = function() {
+					context.drawImage(this.image, this.spriteX, this.spriteY, this.herosWidth, this.herosHeight, this.posX, this.posY, this.herosWidth, this.herosHeight); /* On affiche le sprite */
+					};
+				this.animate = function() {
+					if (exp.test(counter/velocity)) { /* Rendez-vous à la fin du script pour les explications de cette partie */
+						if (this.running) {
+							xFrames = 7;
+							if (counterAnim < xFrames) {
+								counterAnim++;
+							}
+							else {
+								counterAnim = 0;
+							}
+						}
+						else {
+							xFrames = 1;
+							if (!animBack) {
+								if (counterAnim < xFrames) {
+									counterAnim++;
+								}
+								else {
+									animBack = true;
+									counterAnim--;
+								}
+							}
+							else {
+								if (counterAnim > 0) {
+									counterAnim--;
+								}
+								else {
+									animBack = false;
+									counterAnim++;
+								}
+							}
+						}
+					}
+					
+					if (this.posLeft) { /* Si le personnage regarde à gauche... */
+						this.spriteY = 1*this.herosWidth;
+						if (this.running) { /* ...mais qu'il court */
+							this.spriteX = counterAnim*this.herosWidth;
+							this.spriteX += this.herosWidth;
+						}
+					}
+					if (this.posRight) { /* Si le personnage regarde à droite */
+						this.spriteY = 3*this.herosWidth;
+						if (this.running) { /* ...mais qu'il court */
+							this.spriteX = counterAnim*this.herosWidth;
+							this.spriteX += this.herosWidth;
+						}
+					}
+					if (this.posUp) { /* Si le personnage regarde en haut... */
+						this.spriteY = 0;
+						if (this.running) { /* ...mais qu'il court */
+							this.spriteX = counterAnim*this.herosWidth;
+							this.spriteX += this.herosWidth;
+						}
+					}
+					if (this.posDown) { /* Si le personnage regarde à droite */
+						this.spriteY = 2*this.herosWidth;
+						if (this.running) { /* ...mais qu'il court */
+							this.spriteX = counterAnim*this.herosWidth;
+							this.spriteX += this.herosWidth;
+						}
+					}
+										
+					this.newPosX = this.posX; /* initialisation des nouvelles positions */
+					this.newPosY = this.posY;
+					
+					if (this.runLeft) { /* Si le personnage court vers la gauche */
+						this.newPosX = this.posX - footStep; /* On enlève 1 pixels à sa position horizontale */
+						//oldPosX = posX + footStep; /* On enlève 1 pixels à sa position horizontale en cas de collision */
+					}
+					if (this.runRight) { /* Si le personnage court vers la droite */
+						this.newPosX = this.posX + footStep; /* On ajoute 1 pixels à sa position horizontale */
+						//oldPosX = posX - footStep; /* On ajoute 1 pixels à sa position horizontale en cas de collision */
+					}
+					if (this.runUp) { /* Si le personnage court en haut */
+						this.newPosY = this.posY - footStep; /* On enleve 1 pixels à sa position verticale */
+						//oldPosY = posY + footStep; /* On enleve 1 pixels à sa position verticale en cas de collision */
+
+					}
+					if (this.runDown) { /* Si le personnage court en bas */
+						this.newPosY = this.posY + footStep;/* On ajoute 1 pixels à sa position verticale */
+						//oldPosY = posY - footStep;/* On ajoute 1 pixels à sa position verticale en cas de collision */
+					}
+					
+					this.box = new SAT.Box(new SAT.Vector(this.newPosX+20,this.newPosY+20), 10, 10); //un carré de 10*10 au centre du perso
+					//var perso = new SAT.Box(new SAT.Vector(newPosX+20,newPosY+20), 10, 10); //un carré de 10*10 au centre du perso
+
+					probleme = detectsCollision(this.box);
+								
+					if (!probleme){
+						this.posY = this.newPosY;
+						this.posX = this.newPosX;
+					};
+					
+					/*context.drawImage(background, 0, 0);
+					displayFriend(); // on affiche les Friend
+					player1.display();
+					player2.display();
+					detectsTrap(this.box);
+					testEnd(this.box);
+					meetFriend(this.box);	
+					showResult();*/
+					play();
+					
+				};
+				this.goRight = function(){
+					this.posLeft = false;
+					this.posUp = false;
+					this.posDown = false;
+					this.posRight = true;
+					this.runRight = true;
+					this.running = true;
+					this.invite = false;
+					this.animate();
+				};
+				this.goLeft = function(){
+					this.posRight = false;
+					this.posUp = false;
+					this.posDown = false;
+					this.posLeft = true;
+					this.runLeft = true;
+					this.running = true;
+					this.invite = false;
+					this.animate();
+				};
+				this.goUp = function(){
+					this.posRight = false;
+					this.posLeft = false;
+					this.posDown = false;
+					this.posUp = true;
+					this.runUp = true;
+					this.running = true;
+					this.invite = false;
+					this.animate();
+				};
+				this.goDown = function(){
+					this.posRight = false;
+					this.posLeft = false;
+					this.posUp = false;
+					this.posDown = true;
+					this.runDown = true;
+					this.running = true;
+					this.invite = false;
+					this.animate();
+				};
+				this.inviteFriend = function(){
+					this.invite = true;
+					this.animate();
+				};
+				this.stop = function(){
+					this.runLeft = false;
+					this.runRight = false;
+					this.runUp = false;
+					this.runDown = false;
+					this.running = false;
+				};			
+			};
+		
+
+			
+			var exp = new RegExp("^[0-9]+$","g"); /* Une fonction d'expression régulière qui servira pour le compteur */
+			var probleme = false;
+			var FriendWidth = 50; /*largeur des Friend */
+			var FriendHeight = 71; /*hauteur des Friend */
+			var nbColSpriteFriend = 8;
+			var nbRowSpriteFriend = 8;
+			
+			var Friend = new Image(); /* On déclare notre image de sprites pour les Friend*/
+			//Friend.src = 'images/pokemon.png'; /* Attribution de la source */
+			//Friend.src = 'images/pokemon_sprites.png'; /* Attribution de la source */
+			Friend.src = 'images/spriteDC.png'; /* Attribution de la source */
+			
+			var thanks = new Image();
+			thanks.src = "images/thanks.png";	
+			
+			var ask = new Image();
+			ask.src = "images/invite.png";
+			
+			var decors = new Image();
+			decors.src = "images/objets.png";
+			
+			var fin = new Image();
+			fin.src = "images/fin.png";
+			
+			var erreur = new Image();
+			erreur.src = "images/erreur.png";
+			
+			var trap = new Image();
+			trap.src = "images/trap.png";
+			
+			var lac1 = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(1360,0),
+				new SAT.Vector(1428,0),
+				new SAT.Vector(1428,600),
+				new SAT.Vector(1300,260)
+			]);
+			var maison = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(700,0),
+				new SAT.Vector(700,200),				
+				new SAT.Vector(1100,180),				
+				new SAT.Vector(1100,0)				
+			]);
+			
+			var porte = new SAT.Box(new SAT.Vector(1010,160), 30, 30); // devant la porte
+			var puits1 = new SAT.Box(new SAT.Vector(1130,355), 20, 40); // le puits 1
+			var puits2 = new SAT.Box(new SAT.Vector(85,175), 20, 40); // le puits 2
+			var grotte = new SAT.Box(new SAT.Vector(1080,280), 25, 20); // la grotte
+			
+			var maison_haut = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(1100,0),
+				new SAT.Vector(1165,105),
+				new SAT.Vector(1275,105),
+				new SAT.Vector(1335,0)				
+			]);
+			var lac2 = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(765,0),
+				new SAT.Vector(765,310),
+				new SAT.Vector(710,365),
+				new SAT.Vector(570,365),
+				new SAT.Vector(510,310),
+				new SAT.Vector(500,125),
+				new SAT.Vector(490,0)
+			]);
+			var bas_gauche = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(0,420),
+				new SAT.Vector(420,420),
+				new SAT.Vector(495,480),
+				new SAT.Vector(585,495),
+				new SAT.Vector(835,535),
+				new SAT.Vector(920,705),
+				new SAT.Vector(0,705)
+			]);			
+			var bas_droit = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(1428,530),
+				new SAT.Vector(1428,705),
+				new SAT.Vector(1215,705),
+				new SAT.Vector(1185,535)
+			]);
+			var bas = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(990,660),
+				new SAT.Vector(1230,660),
+				new SAT.Vector(1230,705),
+				new SAT.Vector(990,705)
+			]);
+			var haut = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(0,0),
+				new SAT.Vector(700,0),
+				new SAT.Vector(700,65),
+				new SAT.Vector(0,65)
+			]);
+			var bord_gauche = new SAT.Polygon(new SAT.Vector(), [
+				new SAT.Vector(25,0),
+				new SAT.Vector(25,315),
+				new SAT.Vector(0,450),
+				new SAT.Vector(0,0)
+			]);
+			
+			var maison_arbre = new SAT.Circle(new SAT.Vector(860,280), 50);
+			var arbre_bas = new SAT.Circle(new SAT.Vector(975,640), 50);
+			var arbre1 = new SAT.Circle(new SAT.Vector(70,300), 50);
+			var arbre2 = new SAT.Circle(new SAT.Vector(190,330), 50);
+			var arbre3 = new SAT.Circle(new SAT.Vector(280,200), 50);
+			var arbre4 = new SAT.Circle(new SAT.Vector(350,205), 50);
+			var arbre5 = new SAT.Circle(new SAT.Vector(385,130), 50);
+			
+			
+			var aleaX; 
+			var aleaY;
+			var Friends = [];
+			var FriendsFound = [];
+			var spriteFriends = [];
+			
+			var start = 0;
+			var end = 0;
+			var diff = 0;
+			var timerID = 0; //timer
+			start = new Date();
+							
+			var response = new SAT.Response();
+	
+			var player1 = new Perso(spritePlayer1, 0 /* le heros est statique */, 2/* le heros regarde vers le bas */, 50, 50, 1015, 190);
+			var player2 = new Perso(spritePlayer2, 0 /* le heros est statique */, 2/* le heros regarde vers le bas */, 50, 50, 985, 190);
+			
+	
+	
+	
+			
+			//var interval = setInterval(animate, 1000/30);
+			$( window ).load(function(){ /* Une fois chargée, on lance l'affichage */
+				showModal('#intro');
+				prepareNames();
+				prepareSpriteFriends();
+				initFriend();
+				context.drawImage(background, 0, 0);
+				player1.display();
+				player2.display();
+				displayFriend(); // on affiche les Friend
+				showResult();
+				//chronoStart();  //a revoir
+				
+			});
+			
+			
+			var namesList = [];
+
+			function play() {
+				context.drawImage(background, 0, 0);
+				displayFriend(); // on affiche les Friend
+				player1.display();
+				player2.display();
+				detectsTrap(player1);
+				detectsTrap(player2);
+				testEnd(player1);
+				testEnd(player2);
+				meetFriend(player1);	
+				meetFriend(player2);	
+				showResult();
+			};
+
+			/* fonction pour detectsr les obstacles */
+			function detectsCollision(sprite) {
+
+			    var collision = SAT.testPolygonPolygon(lac1, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(maison, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(maison_haut, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(lac2, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(bas_gauche, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(bas_droit, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(bas, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(haut, sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(bord_gauche, sprite.toPolygon() , response);
+				
+				collision += SAT.testPolygonPolygon(puits1.toPolygon(), sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(puits2.toPolygon(), sprite.toPolygon() , response);
+				collision += SAT.testPolygonPolygon(grotte.toPolygon(), sprite.toPolygon() , response);
+				
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), maison_arbre, response);
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), arbre_bas, response);
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), arbre1, response);
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), arbre2, response);
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), arbre3, response);
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), arbre4, response);
+				collision += SAT.testPolygonCircle(sprite.toPolygon(), arbre5, response);
+				
+				Friends.forEach(function(element) {
+					collision += SAT.testPolygonPolygon(element.box.toPolygon(), sprite.toPolygon() , response);
+					// affichage de l'Friend si il n'est pas déjà trouvé
+				});
+				
+				return collision;			
+			}
+			
+			function detectsTrap(perso) {
+			    if (SAT.testPolygonPolygon(perso.box.toPolygon(), puits1.toPolygon() , response)) {
+					if (perso.posUp) { 
+						perso.posY = 125 // 50 au dessus du puits
+						perso.posX = 70;
+					}
+					if (perso.posDown) { 
+						perso.posY = 200; // 35 au dessous du puits
+						perso.posX = 70;
+					}
+					if (perso.posLeft) { 
+						perso.posY = 165; 
+						perso.posX = 40; // 30 à gauche du puits
+					}
+					if (perso.posRight) { 
+						perso.posY = 165; 
+						perso.posX = 100; // 30 à droite du puits
+					}
+				}	
+				if (SAT.testPolygonPolygon(perso.box.toPolygon(), puits2.toPolygon() , response)) {
+					if (perso.posUp) { 
+						perso.posY = 310; // 50 au dessus du puits
+						perso.posX = 1120;
+					}
+					if (perso.posDown) { 
+						perso.posY = 375; // 35 au dessous du puits
+						perso.posX = 1120;
+					}
+					if (perso.posLeft) { 
+						perso.posY = 340; 
+						perso.posX = 1090; // 30 à gauche du puits
+					}
+					if (perso.posRight) { 
+						perso.posY = 340; 
+						perso.posX = 1150; // 30 à droite du puits
+					}
+				}	
+				if (SAT.testPolygonPolygon(perso.box.toPolygon(), grotte.toPolygon() , response)) {
+					var trap = new Image();
+					trap.src = "images/trap.png";
+					context.drawImage(trap, perso.posX+perso.herosWidth/2, perso.posY-105);// 105 hauteur de la bulle
+				}	
+			}
+			
+			function getRandomInt(min, max) {
+				min = Math.ceil(min);
+				max = Math.floor(max);
+				return Math.floor(Math.random() * (max - min)) + min;
+			}
+			
+			function chrono(){
+				end = new Date();
+				diff = end - start;
+				diff = new Date(diff);
+				var msec = diff.getMilliseconds();
+				var sec = diff.getSeconds();
+				var min = diff.getMinutes();
+				var hr = diff.getHours()-1;
+				if (min < 10){
+					min = "0" + min;
+				}
+				if (sec < 10){
+					sec = "0" + sec;
+				}
+				if(msec < 10){
+					msec = "00" +msec;
+				}
+				else if(msec < 100){
+					msec = "0" +msec;
+				}
+				context.fillText("temps mis : "+ hr + ":" + min + ":" + sec + ":" + msec, canvasWidth-600, 50);
+				timerID = setTimeout(chrono(), 10);
+			}
+			
+			function chronoStart(){
+				start = new Date();
+				chrono();
+			}
+			
+			/**
+			 * Shuffles array in place.
+			 * @param {Array} a items The array containing the items.
+			 */
+			function shuffle(a) {
+				var j, x, i;
+				for (i = a.length; i; i--) {
+					j = Math.floor(Math.random() * i);
+					x = a[i - 1];
+					a[i - 1] = a[j];
+					a[j] = x;
+				}
+			}
+						
+			function prepareNames()
+			{
+				//var e=document.getElementById("friends"),k,t=" ";
+				var e=document.getElementById("friends");
+				namesList=e.innerHTML.split("\n");
+				shuffle(namesList);
+			}
+			
+			function prepareSpriteFriends()
+			{
+				/* pour un sprite de 8*8 */
+				var nbCol = 7; 
+				var nbRow = 7;
+				for (var i = 0; i < nbCol; i++) {
+					for (var j = 0; j < nbRow; j++) {
+						spriteFriends.push({col : i*FriendWidth, row : j*FriendHeight});
+					}
+				}
+				shuffle(spriteFriends);
+			}
+			
+			/* fonction pour initialiser les Friend */
+			function initFriend() {
+				for (var i = 0; i < nbFriend; i++) {
+					do {
+						var aleaX = getRandomInt(0, 1428-FriendWidth);
+						var aleaY = getRandomInt(0, 705-FriendHeight);
+						var posTextX = getRandomInt(0,3);
+						var posTextY = getRandomInt(0,3);
+						var temp = new SAT.Box(new SAT.Vector(aleaX+5, aleaY+10), FriendWidth-10, FriendHeight-20);}
+					while (detectsCollision(temp))
+					Friends.push({spriteImage : spriteFriends[i], friendName : namesList[i], FriendPosX : aleaX , FriendPosY : aleaY, textPosX : posTextX, textPosY : posTextY, box : temp});
+				}
+			}
+			
+			
+			
+			/* fonction pour afficher les Friend */
+			function displayFriend() {
+				Friends.forEach(function(element) {
+					context.drawImage(Friend, element.spriteImage.col, element.spriteImage.row, FriendWidth, FriendHeight, element.FriendPosX , element.FriendPosY, FriendWidth, FriendHeight);
+					// affichage de l'Friend si il n'est pas déjà trouvé
+					//context.font = '12px Helvetica';
+					//context.fillStyle = 'yellow';
+					//context.fillText(element.FriendName, element.FriendPosX+5, element.FriendPosY+FriendHeight-5);
+				})
+				//affichage élements de décors
+				context.drawImage(decors, 0, 0, 50, 50, 1115, 350, 50, 50); //puits 1
+				context.drawImage(decors, 0, 0, 50, 50, 70, 170, 50, 50); //puits 2
+			}
+
+			/* fonction pour afficher le resultat */
+			function showResult() {
+				context.font = '18px Helvetica';
+				context.fillStyle = '#FFFFFF';
+				context.fillText("Invitations restantes à distribuer : " + Friends.length, canvasWidth-600,20);
+			}
+									
+			/* fonction pour meetr les Friend */
+			function meetFriend(perso) {
+				if (perso.invite == true) {
+					Friends.forEach(function(element) {
+						var temp = new SAT.Box(new SAT.Vector(element.FriendPosX, element.FriendPosY), FriendWidth, FriendHeight);
+						var collision = SAT.testPolygonPolygon(temp.toPolygon(), perso.box.toPolygon() , response);
+						if (collision == true) {	
+								FriendsFound.push(element);
+								context.drawImage(ask, getRandomInt(0,3)*100, 0, 100, 50, perso.posX-100, perso.posY-50,100,50 );
+								context.font = '12px Helvetica';
+								context.fillStyle = 'black';
+								context.fillText(element.friendName, perso.posX-90, perso.posY-20);
+								context.drawImage(thanks,element.textPosX*100,element.textPosY*50,100,50,element.FriendPosX+FriendWidth, element.FriendPosY-FriendHeight/2,100,50);
+								Friends.splice(Friends.indexOf(element),1);
+							}
+						})
+				}
+			}
+
+			
+			function testEnd(perso) {
+				if (SAT.testPolygonPolygon(perso.box.toPolygon(), porte.toPolygon() , response)) {
+					if (FriendsFound.length != nbFriend) {
+					// continue...
+					context.drawImage(erreur, 1045, 55);
+						//clearTimeout(timerID) // pour test
+					}
+					else {
+						finPartie();
+						
+						}
+				}
+			}
+			
+			
+			function finPartie() {
+				context.drawImage(fin, 1045, 55);
+				context.font = '18px Helvetica';
+				context.fillStyle = '#FFFFFF';
+				context.fillText("appuie sur Entrée pour lancer la fête", canvasWidth-475,225);
+				if (end){
+				setTimeout('document.location.href="./merryGeekMas.html"', 200);
+				}
+			}
+
+
+			
+			
+			$(window).keydown(function(e){ /* Les évènements de touches */
+				var keyCode = e.keyCode;
+
+				if (keyCode == player1Right) { /* Si on appuie à droite */
+					player1.goRight();
+				}
+				else if (keyCode == player1Left) { /* Si on appuie à gauche */
+					player1.goLeft();
+				}
+				else if (keyCode == player1Up) { /* Si on appuie à gauche */
+					player1.goUp();
+				}
+				else if (keyCode == player1Down) { /* Si on appuie à gauche */
+					player1.goDown();
+				}
+				
+				if (keyCode == player2Right) { /* Si on appuie à droite */
+					player2.goRight();
+									}
+				else if (keyCode == player2Left) { /* Si on appuie à gauche */
+					player2.goLeft();
+				}
+				else if (keyCode == player2Up) { /* Si on appuie à gauche */
+					player2.goUp();
+				}
+				else if (keyCode == player2Down) { /* Si on appuie à gauche */
+					player2.goDown();
+				}
+				if (keyCode == player1InviteKey ) { /* Si on appuie sur espace */
+					player1.inviteFriend();
+					}
+				if (keyCode == player2InviteKey ) { /* Si on appuie sur espace */
+					player2.inviteFriend();
+					}
+				if (keyCode == endKey ) { /* Si on appuie sur Entrée */
+					end = true;
+					play();
+					}
+			});
+
+			$(window).keyup(function(e){ /* Quand on relache une touche */
+				var keyCode = e.keyCode;
+				if ((keyCode == player1Up) || (keyCode == player1Down) || (keyCode == player1Left) || (keyCode == player1Right) || (keyCode == player1InviteKey)) {
+					player1.stop();
+					}
+				if ((keyCode == player2Up) || (keyCode == player2Down) || (keyCode == player2Left) || (keyCode == player2Right) || (keyCode == player2InviteKey)) {
+					player2.stop();
+					}
+					
+				/*if (keyCode == endKey ) { 
+					end = false;
+					}*/
+				
+			});
+
+		});
+	</script>
+	
+</head>
+
+    <body>
+		<div id="fond"></div>
+		<!-- <p>Utilise Z-Q-X-D pour te déplacer et I pour distribuer les invitations à tes amis / Press Z-Q-X-D to move and I to invite your friends. </p> -->
+		<p>Utilise les flèches pour te déplacer et la barre espace pour distribuer les invitations à tes amis / Press arrows to move (or ZQDX) and the spacebar (or I) to invite your friends. <a href="#" id="showIntro">revoir la règle</a> - <a href="#" id="showAbout">à propos</a></p>
+		<div id="friends" style="display:none">Marie
+		Gilles
+		Fréderique
+		Tiphaine
+		Djamel 
+		Mahfoud
+		Jérémy
+		Kelian
+		Hamaied
+		Maxime
+		Benjamin
+		Louise
+		Steven
+		Yohan
+		Clément
+		Marion
+		Alexandre
+		Antoine
+		Melvin
+		Arnaud
+		Romain
+		Faycal
+		Walid
+		Pierrick
+		Antoine
+		Ewan
+		Baptiste
+		Clément
+		Eddie
+		Senli
+		Johanna
+		Quentin
+		Guillem
+		Louka
+		Kilian
+		Cécile
+		Zakarya
+		Mathieu
+		Thierry</div>
+		
+		<div id="intro" class="popup">Bienvenue sur mon petit jeu de Noël<br/><img src="images/heros1.png" /> <img src="images/heros2.png" /></br><br/>Aide les 2 héros à inviter tous leurs amis à leur fête puis à revenir chez eux.<br/><br/><u>Avancer</u> : joueur 1 - flèches directionnelles | joueur 2 - touches QZDX<br/><u>Dialoguer avec les amis</u> : joueur 1 - barre espace | joueur 2 - touche I</br><u>Perso bloqué</u> : le héros a atteint un obstacle ou un ami, il faut changer de direction ou l'inviter<br/><u>Changer d'amis</u> : recharger la fenêtre ^^ (réinitialise le jeu)<br/> <br/><a href="#" class="close">Let's play !</a></div> 
+		<div id="about" class="popup">
+			<center><img src="images/perso1_petit.png" height="150px" /></center><br/>
+			Ce jeu utilise :
+			<ul>
+				<li>pour l'animation du personnage : HTML5 (CANVAS) + sprites d'animation</li>
+				<li>pour la gestion des événements (touches) : jquery-1.4.2.js</li>
+				<li>pour gérer les collisions entre les objets (perso, décors) : SAT.js</li>
+				<li>pour l'affichage des fenêtres modales : CSS3 + JS</li>
+				<li>pour le code : JS</li>
+			</ul>
+			<i>Note : Le choix des amis affichés se fait au hasard parmi 64 sprites, le choix des noms et des répliques également... Il y a quelques easters cachés.</i>
+			<center>&copy; 2016 Tiphaine Accary-Barbier (nouvelle version 2017)</center>
+		</div> 
+		<canvas id="myCanvas" width="1430" height="705" style="display:block;margin-left: auto;	margin-right: auto;">
+		Your browser does not support the canvas element.
+		</canvas>
+   
+	</body>
+</html>
