@@ -1,6 +1,10 @@
 # Project Title
 
+<<<<<<< HEAD
 Xmas Game
+=======
+One Paragraph of project description goes here
+>>>>>>> e351e5b91616ab4e4c87740c2e4e95a9407daec0
 
 ## Getting Started
 
